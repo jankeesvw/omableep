@@ -43,7 +43,7 @@ Panel {
   // made from a keybinding while the panel is shut.
   property bool flashing: false
 
-  readonly property int columns: 4
+  readonly property int columns: 2
   readonly property var board: boards.length > 0 && boardIndex < boards.length
                                ? boards[boardIndex] : null
   readonly property var pads: board ? board.pads : []
@@ -65,6 +65,13 @@ Panel {
     return String(value === undefined || value === null ? "" : value)
       .replace(/[<>&]/g, "")
       .slice(0, 40)
+  }
+
+  // A for the first board, B for the second, up to the twelfth. The letter is
+  // the position rather than something the file gets to name, so it cannot
+  // collide with the digits and two boards cannot claim the same key.
+  function boardKey(index) {
+    return String.fromCharCode(65 + index)
   }
 
   function selectBoard(index) {
@@ -312,7 +319,7 @@ Panel {
     open: root.opened
     focusTarget: keyCatcher
 
-    readonly property int desiredWidth: Style.space(470)
+    readonly property int desiredWidth: Style.space(300)
     contentWidth: Math.min(desiredWidth,
                            panel.availableCardWidth > 0 ? panel.availableCardWidth : desiredWidth)
     contentHeight: panel.fittedContentHeight(content.implicitHeight, Style.space(620))
@@ -359,6 +366,14 @@ Panel {
           root.cursor = event.key - Qt.Key_1
           root.fire(event.key - Qt.Key_1)
           event.accepted = true
+        } else if (event.key >= Qt.Key_A && event.key <= Qt.Key_L) {
+          // Letters pick a board outright. Tab still walks them, but walking is
+          // no good once there are five: you should be able to say which one.
+          var wanted = event.key - Qt.Key_A
+          if (wanted < root.boards.length) {
+            root.selectBoard(wanted)
+            event.accepted = true
+          }
         }
       }
 
@@ -367,10 +382,13 @@ Panel {
         width: parent.width
         spacing: Style.space(10)
 
-        // Boards, as a row of tabs. Tab walks them, and they are clickable for
-        // anyone who came here with a mouse.
-        RowLayout {
+        // Boards, in the same two columns as the pads below them, each carrying
+        // the letter that selects it. The letter is on the tab rather than in
+        // the caption line, because a key you have to read a legend for is a
+        // key you will not use.
+        Grid {
           Layout.fillWidth: true
+          columns: root.columns
           spacing: Style.space(6)
           visible: root.boards.length > 1
 
@@ -382,22 +400,33 @@ Panel {
               required property var modelData
               readonly property bool current: index === root.boardIndex
 
-              Layout.fillWidth: true
-              Layout.preferredWidth: 0
-              implicitHeight: Style.space(26)
+              width: (content.width - Style.space(6) * (root.columns - 1)) / root.columns
+              height: Style.space(26)
               radius: Style.space(4)
               color: current ? Qt.alpha(root.accent, 0.16) : "transparent"
               border.width: 1
               border.color: current ? root.accent : Qt.alpha(root.foreground, 0.22)
 
-              Text {
+              Row {
                 anchors.centerIn: parent
-                textFormat: Text.PlainText
-                text: root.plain(modelData.label)
-                font.family: root.fontFamily
-                font.pixelSize: Style.font.bodySmall
-                font.letterSpacing: 1
-                color: current ? root.accent : Qt.alpha(root.foreground, 0.7)
+                spacing: Style.space(7)
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: root.boardKey(index)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.caption
+                  color: current ? root.accent : Qt.alpha(root.foreground, 0.45)
+                }
+
+                Text {
+                  textFormat: Text.PlainText
+                  text: root.plain(modelData.label)
+                  font.family: root.fontFamily
+                  font.pixelSize: Style.font.bodySmall
+                  font.letterSpacing: 1
+                  color: current ? root.accent : Qt.alpha(root.foreground, 0.7)
+                }
               }
 
               MouseArea {
@@ -427,7 +456,7 @@ Panel {
               readonly property bool hasCursor: index === root.cursor
 
               width: (content.width - Style.space(6) * (root.columns - 1)) / root.columns
-              height: Style.space(58)
+              height: Style.space(46)
               radius: Style.space(5)
               color: pressArea.pressed
                 ? Qt.alpha(root.accent, 0.3)
@@ -544,14 +573,20 @@ Panel {
 
           Repeater {
             model: [
-              "1-8 fire  ·  arrows move  ·  enter plays  ·  tab switches board",
-              "+ and - set volume  ·  backspace stops everything  ·  esc closes"
+              "A-" + root.boardKey(Math.max(0, root.boards.length - 1)) + " board  ·  1-8 fire",
+              "arrows move  ·  enter plays",
+              "+ - volume  ·  backspace stops  ·  esc"
             ]
 
             delegate: Text {
               required property string modelData
+              width: content.width
               textFormat: Text.PlainText
               text: modelData
+              // The card is narrow on purpose, so the legend has to fit inside
+              // it rather than run off the edge. Elide is the backstop for a
+              // theme whose caption font is wider than the one measured here.
+              elide: Text.ElideRight
               font.family: root.fontFamily
               font.pixelSize: Style.font.caption
               color: Qt.alpha(root.foreground, 0.45)

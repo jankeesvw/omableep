@@ -4,7 +4,7 @@
   "name": "Omableep",
   "version": "1.0.0",
   "author": "Jankees van Woezik",
-  "description": "A soundboard that synthesises every pad instead of shipping audio files.",
+  "description": "Retro soundboard: chip sounds synthesised on the spot, machine sounds from real recordings.",
   "kinds": [
     "bar-widget"
   ],
@@ -13,7 +13,7 @@
   },
   "barWidget": {
     "displayName": "Omableep",
-    "description": "A soundboard that synthesises every pad instead of shipping audio files.",
+    "description": "Retro soundboard: chip sounds synthesised on the spot, machine sounds from real recordings.",
     "category": "Widgets",
     "allowMultiple": false,
     "defaultSection": "right"

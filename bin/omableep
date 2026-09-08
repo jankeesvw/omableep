@@ -189,6 +189,15 @@ def parse_layer(raw):
 def parse_pad(raw, index):
     if not isinstance(raw, dict):
         return None
+
+    # A pad that names a recording instead of describing a waveform. The name
+    # is checked against the same pattern as a user file and resolved against
+    # the plugin's own sounds directory, so a pads.json cannot point this at
+    # something elsewhere on the disk.
+    wav = raw.get("wav")
+    if isinstance(wav, str) and SOUND_RE.match(wav):
+        return {"label": label(raw.get("label"), "PAD %d" % (index + 1)), "wav": wav}
+
     seq = parse_layer(raw.get("seq"))
     mix = parse_layer(raw.get("mix"))
     if not seq and not mix:
@@ -268,6 +277,15 @@ def load_boards():
     return boards, gain
 
 
+def plugin_sounds_dir():
+    here = os.path.dirname(os.path.abspath(__file__))
+    return os.path.join(os.path.dirname(here), "sounds")
+
+
+def user_sounds_dir():
+    return os.path.join(config_dir(), "sounds")
+
+
 def config_dir():
     base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
     return os.path.join(base, "omableep")
@@ -287,7 +305,7 @@ def sounds_board():
     The files stay on the machine they were put on. Nothing here creates the
     directory, because loading a plugin should not write to the disk.
     """
-    path = os.path.join(config_dir(), "sounds")
+    path = user_sounds_dir()
     try:
         dirfd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
     except OSError:
@@ -346,16 +364,19 @@ def playable(dirfd, name):
         os.close(fd)
 
 
-def read_sound(name):
-    """Read one user file through a descriptor opened relative to the directory.
+def read_sound(path, name):
+    """Read one sound through a descriptor opened relative to its directory.
 
-    The name never gets joined onto a string and reopened: the directory is
-    opened once, checked, and every file comes out of that same descriptor, so
-    there is no window between deciding a path is fine and reading it.
+    Used for both the recordings shipped beside this script and the ones the
+    user dropped in their own directory, because neither is more trustworthy
+    than the other: both live under a path any process running as this user can
+    write to. The name never gets joined onto a string and reopened; the
+    directory is opened once, checked, and every file comes out of that same
+    descriptor, so there is no window between deciding a path is fine and
+    reading it.
     """
     if not SOUND_RE.match(name):
         die("bad sound name")
-    path = os.path.join(config_dir(), "sounds")
     dirfd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
     try:
         fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
@@ -627,7 +648,9 @@ def cmd_play(boards, default_gain, argv):
                 die("no such pad")
             pad = board["pads"][index]
             if "file" in pad:
-                play(read_sound(pad["file"]), level=gain)
+                play(read_sound(user_sounds_dir(), pad["file"]), level=gain)
+            elif "wav" in pad:
+                play(read_sound(plugin_sounds_dir(), pad["wav"]), level=gain)
             else:
                 play(wav_bytes(render_pad(pad, gain)))
             return

@@ -1,14 +1,18 @@
 # Omableep
 
-A soundboard for the Omarchy bar that synthesises every pad instead of shipping audio files.
+A soundboard for the Omarchy bar. The chip sounds are synthesised on the spot, the machine sounds are real recordings.
 
-Four boards of eight: `SYSTEM` (power-on, disk seek, tape load, error), `ARCADE` (coin, laser, extra life, game over), `MODEM` (dial tone, handshake, CONNECT, NO CARRIER) and `ALERT` (klaxon, siren, red alert). Press a number, hear it. There is no sample anywhere in this repository, no download on first run, and nothing written to your disk.
+Five boards of eight: `MODEM` (dial tone, handshake, CONNECT, NO CARRIER), `DRIVE` (a real 5.25 inch floppy spinning up, seeking, grinding), `SYSTEM` (power-on, keyclick, tape load, error), `ARCADE` (coin, laser, extra life, game over) and `ALERT` (klaxon, siren, red alert). Press a letter for a board, a number for a pad.
 
-## Why there are no sound files
+## Where the sounds come from
 
-Every pad is a few numbers: a waveform, a pulse width, an envelope, a pitch slide. `bin/omableep` turns those into 8-bit 22 kHz audio at the moment you press the pad and pipes the bytes straight into the system player. The longest pad takes 69 milliseconds to make and most take three or four, which is why there is no cache to keep, no first-run generation step, and no state directory to clean up afterwards.
+Anything that was once a chip is synthesised, and anything that was once a physical object is a recording. That line is not a compromise, it is the whole design: a coin sound on a home computer really was a square wave with a pitch step in it, so synthesising one is not an imitation but the same act. A stepper motor dragging a head across oxide is not, and no envelope on a noise generator will convince you otherwise.
 
-It also settles the licensing question by not raising it. Sampled game audio from the era is still under copyright everywhere and will be for another fifty years, so a board built from it could not be published. A square wave with a pitch drop on it belongs to nobody.
+So four boards are numbers. A waveform, a pulse width, an envelope, a pitch slide, turned into 8-bit 22 kHz audio at the moment you press the pad and piped straight into the system player. The longest takes 69 milliseconds to make and most take three or four, which is why there is no cache, no first-run generation step, and no state directory to clean up.
+
+The `DRIVE` board is 324 KB of real floppy drive, cut from two CC0 recordings on Wikimedia Commons. `CREDITS.md` names them, says what was done to them, and explains why there is no recording of a modem in here.
+
+Sampled game audio is a different matter and is not in this plugin at any point. It is still under copyright everywhere and will be for another fifty years, so a board built from it could not be published. If you have recordings you are entitled to use, the `YOURS` board below is for exactly that.
 
 ## Installing
 
@@ -29,6 +33,7 @@ o.bind("SUPER SHIFT, B", "Omableep", "omarchy-shell shell toggle jankeesvw.omabl
 
 | | |
 |---|---|
+| `A` to `F` | pick a board, in the order they are listed on the card |
 | `1` to `8` | fire that pad |
 | arrow keys | move the cursor |
 | `enter` or `space` | fire the pad under the cursor |
@@ -43,7 +48,7 @@ Six pads can sound at once. A seventh takes over the oldest, the way a hardware 
 
 Copy a board out of `pads.json` into `~/.config/omableep/pads.json` and edit it. A board whose `id` matches a shipped one replaces it; a board with a new `id` is added after the others. The panel re-reads the file the next time the shell starts.
 
-A pad is a list of notes, played one after another, with an optional second list mixed on top of it:
+A pad is either a `"wav"` naming a file in `sounds/`, or a list of notes played one after another with an optional second list mixed on top:
 
 ```json
 {
@@ -72,7 +77,7 @@ A top-level `"gain"` sets the starting volume. The panel does not remember where
 
 ## Using your own recordings
 
-Put `.wav` files in `~/.config/omableep/sounds/` and they appear as a fifth board called `YOURS`, named after the filenames, sixteen at most. The directory is not created for you; make it yourself when you want it.
+Put `.wav` files in `~/.config/omableep/sounds/` and they appear as a board of their own called `YOURS`, named after the filenames, sixteen at most. The directory is not created for you; make it yourself when you want it.
 
 This is the place for audio this plugin will not carry. What you put there stays on your machine, is never copied anywhere, and is not part of this repository.
 
@@ -80,7 +85,7 @@ Files are refused if they are not ordinary files you own, are larger than 2 MB, 
 
 ## What it touches
 
-**Reads:** `pads.json` beside the plugin, `~/.config/omableep/pads.json`, and `.wav` files in `~/.config/omableep/sounds/`. Nothing else.
+**Reads:** `pads.json` and the eight recordings in `sounds/` beside the plugin, plus `~/.config/omableep/pads.json` and any `.wav` files in `~/.config/omableep/sounds/`. Nothing else.
 
 **Writes:** nothing, anywhere, ever. No cache, no state file, no configuration written on your behalf.
 
@@ -95,6 +100,10 @@ omarchy plugin remove jankeesvw.omableep
 ```
 
 That is all of it, because the plugin never wrote anything. If you made `~/.config/omableep/` yourself it stays where it is, along with your own pads and recordings; delete that directory if you want it gone.
+
+## Credits
+
+The `DRIVE` recordings and their licences are listed in `CREDITS.md`.
 
 ## Licence
 
