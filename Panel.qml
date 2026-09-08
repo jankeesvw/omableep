@@ -91,33 +91,32 @@ Panel {
     gain = Math.max(0, Math.min(1, Math.round(value * 20) / 20))
   }
 
-  // Fire a pad on the first free player. The pool is fixed, so holding a key
-  // down cannot spawn processes without end; past the last free slot the
-  // oldest one is taken over, which is what a hardware pad does too.
+  // One pad at a time. A press cuts whatever is still sounding, the way a
+  // single tape head does, so holding a key down or walking the board with the
+  // arrows never piles sounds on top of each other.
   function fire(index) {
     if (!board || index < 0 || index >= pads.length) return
     if (gain <= 0) return
 
-    var slot = null
-    for (var i = 0; i < players.count; i++) {
-      var candidate = players.itemAt(i)
-      if (candidate && !candidate.proc.running) { slot = candidate; break }
-    }
-    if (slot === null) {
-      slot = players.itemAt(root.nextVictim % players.count)
-      root.nextVictim = (root.nextVictim + 1) % players.count
-      if (slot) slot.stop()
-    }
+    panic()
+
+    // The slot that was just told to stop may still be winding down, so take
+    // the next one rather than waiting on it. Three is enough that a press is
+    // never blocked by a teardown, and few enough that the count is obviously
+    // bounded.
+    root.nextSlot = (root.nextSlot + 1) % players.count
+    var slot = players.itemAt(root.nextSlot)
     if (slot) { root.playError = ""; slot.play(board.id, index, gain) }
 
     flashing = true
     flashTimer.restart()
   }
 
-  property int nextVictim: 0
+  property int nextSlot: 0
 
-  // Cut everything that is sounding. The pads are short, but SIREN is a second
-  // and a half and RING is two, and there has to be a way to take it back.
+  // Cut whatever is sounding without starting anything. SIREN runs a second and
+  // a half and CONNECT runs three, so there has to be a way to take it back
+  // that is not "press another pad".
   function panic() {
     for (var i = 0; i < players.count; i++) {
       var slot = players.itemAt(i)
@@ -139,14 +138,15 @@ Panel {
 
   // ---------------------------------------------------------------- the pool
 
-  // Six players, so a handful of pads can overlap the way they would on a real
-  // board, and no more than six processes can ever exist because of this
-  // plugin. Each slot owns its Process handle, which is what makes stopping
-  // safe: the handle is the identity, so there is no stored pid to be reused
-  // by something else between the decision to stop and the signal.
+  // Three players for a board that only ever sounds one pad. Two would do; the
+  // third is margin, and the ceiling is what matters: no press can make this
+  // plugin hold more than three processes. Each slot owns its Process handle,
+  // which is what makes stopping safe, because the handle is the identity and
+  // there is no stored pid to be reused by something else between the decision
+  // to stop and the signal.
   Repeater {
     id: players
-    model: 6
+    model: 3
 
     Item {
       id: slot
@@ -563,36 +563,11 @@ Panel {
           }
         }
 
-        // An icon button gives up its tooltip only to a mouse, so a keyboard
-        // has nothing to read. Two dim lines cover the whole interface, split
-        // where the meaning splits rather than wherever the words run out.
-        Column {
-          Layout.fillWidth: true
-          Layout.topMargin: Style.space(2)
-          spacing: Style.space(2)
-
-          Repeater {
-            model: [
-              "A-" + root.boardKey(Math.max(0, root.boards.length - 1)) + " board  ·  1-8 fire",
-              "arrows move  ·  enter plays",
-              "+ - volume  ·  backspace stops  ·  esc"
-            ]
-
-            delegate: Text {
-              required property string modelData
-              width: content.width
-              textFormat: Text.PlainText
-              text: modelData
-              // The card is narrow on purpose, so the legend has to fit inside
-              // it rather than run off the edge. Elide is the backstop for a
-              // theme whose caption font is wider than the one measured here.
-              elide: Text.ElideRight
-              font.family: root.fontFamily
-              font.pixelSize: Style.font.caption
-              color: Qt.alpha(root.foreground, 0.45)
-            }
-          }
-        }
+        // No legend. The keys that matter are already drawn on the things they
+        // act on: the letter sits on its board and the digit sits on its pad,
+        // which is where you look anyway. The rest, meaning the arrows, the
+        // volume keys and the panic key, is in the README rather than taking up
+        // three lines of a card that is meant to be small.
       }
     }
   }

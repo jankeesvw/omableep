@@ -81,9 +81,43 @@ A top-level `"gain"` sets the starting volume. The panel does not remember where
 
 Put `.wav` files in `~/.config/omableep/sounds/` and they appear as a board of their own called `YOURS`, named after the filenames, sixteen at most. The directory is not created for you; make it yourself when you want it.
 
-This is the place for audio this plugin will not carry. What you put there stays on your machine, is never copied anywhere, and is not part of this repository.
+This is the place for audio this plugin will not carry, and it is deliberately the only place. Nothing in this repository reaches the network, so a pack is something you assemble rather than something the plugin fetches on your behalf. What you put there stays on your machine and is never copied anywhere.
 
-Files are refused if they are not ordinary files you own, are larger than 2 MB, or do not start with a RIFF/WAVE header. Refused files do not appear on the board.
+Files are refused if they are not ordinary files you own, are larger than 2 MB, or do not start with a RIFF/WAVE header. Refused files do not appear on the board, and the extension is not taken at its word: the header is what decides.
+
+### An example pack
+
+A worked example, because the shape of a pack is easier to see than to describe. This one is a car: a Tesla reversing, its tailgate, a seatbelt reminder and an autopilot disconnect warning. Every sound is CC0, checked on its own page rather than on a search filter, and the whole thing is five files and about 400 KB.
+
+Paste it into a terminal. It needs `curl` and `ffmpeg`, both of which Omarchy already has.
+
+```bash
+mkdir -p ~/.config/omableep/sounds && cd ~/.config/omableep/sounds
+
+while read -r name url start secs; do
+  fade=$(awk -v s="$secs" 'BEGIN{printf "%.2f", s-0.08}')
+  curl -q -sS --fail --proto '=https' --max-time 60 --max-filesize 8000000 \
+    -o /tmp/omableep-src -- "$url" &&
+  ffmpeg -nostdin -v error -y -ss "$start" -t "$secs" -i /tmp/omableep-src \
+    -ac 1 -ar 22050 -acodec pcm_u8 \
+    -af "afade=t=in:d=0.03,afade=t=out:st=$fade:d=0.08,loudnorm=I=-16:TP=-1.5" \
+    "$name.wav" && echo "  $name.wav"
+done <<'SOUNDS'
+tesla-backup   https://cdn.freesound.org/previews/745/745146_2397507-lq.ogg   0.15  3.4
+tesla-accel    https://cdn.freesound.org/previews/761/761685_13088347-lq.ogg  0.15  4.8
+tesla-trunk    https://cdn.freesound.org/previews/585/585830_7439175-lq.ogg  11.0   5.0
+car-seatbelt   https://cdn.freesound.org/previews/218/218315_1480854-lq.ogg   0.2   4.0
+autopilot-off  https://cdn.freesound.org/previews/203/203539_1028972-lq.ogg   0.0   1.4
+SOUNDS
+
+rm -f /tmp/omableep-src
+```
+
+Then `omarchy restart shell` and press `F`.
+
+The `-nostdin` on `ffmpeg` is not decoration. Without it ffmpeg eats the list this loop is reading from and you get one file instead of five.
+
+Two of those sources are worth a word. `tesla-backup` is the pedestrian warning a Tesla plays when it reverses, recorded by [itinerantmonk108](https://freesound.org/people/itinerantmonk108/sounds/745146/); `autopilot-off` is an aircraft autopilot disconnect warning by [KIZILSUNGUR](https://freesound.org/people/KIZILSUNGUR/sounds/203539/), not a car one. Tesla's own interface sounds, the autopilot chime and the takeover alert as the car plays them, are not in this list and could not be: they are Tesla's assets and are not published under any licence, anywhere. If you want those and you have the car, record them yourself. A recording you made is yours, and it drops straight into the same directory.
 
 ## What it touches
 
