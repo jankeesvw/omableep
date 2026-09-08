@@ -2,6 +2,8 @@
 
 A soundboard for the Omarchy bar. The chip sounds are synthesised on the spot, the machine sounds are real recordings.
 
+![Omableep in the Omarchy bar](preview.png)
+
 Five boards of eight: `MODEM` (a real 56k session: dial tone, dialing, handshake, connect), `DRIVE` (a real 5.25 inch floppy spinning up, seeking, grinding), `SYSTEM` (power-on, keyclick, tape load, error), `ARCADE` (coin, laser, extra life, game over) and `ALERT` (klaxon, siren, red alert). Press a letter for a board, a number for a pad.
 
 ## Where the sounds come from
