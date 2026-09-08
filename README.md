@@ -8,9 +8,9 @@ Five boards of eight: `MODEM` (a real 56k session: dial tone, dialing, handshake
 
 Anything that was once a chip is synthesised, and anything that was once a physical object is a recording. That line is not a compromise, it is the whole design: a coin sound on a home computer really was a square wave with a pitch step in it, so synthesising one is not an imitation but the same act. A stepper motor dragging a head across oxide is not, and no envelope on a noise generator will convince you otherwise.
 
-So four boards are numbers. A waveform, a pulse width, an envelope, a pitch slide, turned into 8-bit 22 kHz audio at the moment you press the pad and piped straight into the system player. The longest takes 69 milliseconds to make and most take three or four, which is why there is no cache, no first-run generation step, and no state directory to clean up.
+So four boards are numbers. A waveform, a pulse width, an envelope, a pitch slide, turned into 16-bit 22 kHz audio at the moment you press the pad and piped straight into the system player. The longest takes 69 milliseconds to make and most take three or four, which is why there is no cache, no first-run generation step, and no state directory to clean up.
 
-The `MODEM` and `DRIVE` boards are 696 KB of real hardware: a 56k modem dialling out and connecting, and a 5.25 inch floppy drive spinning up and grinding. `CREDITS.md` names every source, its author and its licence, and says what was cut out of it.
+The `MODEM` and `DRIVE` boards are 1.4 MB of real hardware: a 56k modem dialling out and connecting, and a 5.25 inch floppy drive spinning up and grinding. `CREDITS.md` names every source, its author and its licence, and says what was cut out of it.
 
 Two pads on the `MODEM` board stay synthesised, and that is not a shortcut either. A ringing tone is 440 and 480 Hz together and a busy signal is 480 and 620 Hz at half a second on and off. Those are specifications, so generating them produces the signal rather than a likeness of it.
 
@@ -99,7 +99,7 @@ while read -r name url start secs; do
   curl -q -sS --fail --proto '=https' --max-time 60 --max-filesize 8000000 \
     -o /tmp/omableep-src -- "$url" &&
   ffmpeg -nostdin -v error -y -ss "$start" -t "$secs" -i /tmp/omableep-src \
-    -ac 1 -ar 22050 -acodec pcm_u8 \
+    -ac 1 -ar 22050 -acodec pcm_s16le \
     -af "afade=t=in:d=0.03,afade=t=out:st=$fade:d=0.08,loudnorm=I=-16:TP=-1.5" \
     "$name.wav" && echo "  $name.wav"
 done <<'SOUNDS'

@@ -23,9 +23,9 @@ Everything here is Creative Commons Zero or Creative Commons Attribution. CC0 ca
 
 ## What was done to them
 
-Every source runs for half a minute or more. A segment of one and a half to three seconds was cut out of each, converted to the same 22 kHz 8 bit mono the synthesiser produces, levelled with `loudnorm`, and given a short fade at each end so a pad stops without a click of its own. The Freesound material was taken from the site's own preview encodes. Nothing was added, and no part of any recording appears here other than the segment named above.
+Every source runs for half a minute or more. A segment of one and a half to three seconds was cut out of each, converted to the same 22 kHz 16 bit mono the synthesiser produces, levelled with `loudnorm`, and given a short fade at each end so a pad stops without a click of its own. The Freesound material was taken from the site's own preview encodes. Nothing was added, and no part of any recording appears here other than the segment named above.
 
-The whole set is 696 KB.
+The whole set is 1.4 MB.
 
 ## Why these and not others
 

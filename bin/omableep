@@ -30,7 +30,7 @@ import struct
 import subprocess
 import sys
 
-RATE = 22050            # the rate a cabinet ran at, and a quarter of the samples
+RATE = 22050            # the rate a cabinet ran at, and half the samples of CD
 FADE = int(RATE * 0.002)  # 2ms at both ends, so a blip stops without a click
 
 # Every one of these bounds the work a pads.json can ask for. The file is
@@ -511,17 +511,30 @@ def render_pad(pad, gain):
 
 
 def wav_bytes(samples):
-    """8-bit unsigned mono, the format the era actually used."""
-    if len(samples) > MAX_WAV_BYTES:
+    """16-bit signed mono.
+
+    It was 8-bit for a while, on the argument that the era was 8-bit. That was
+    the wrong argument: the chips of the time drove a speaker through analogue
+    circuitry, and the sample format is this program's choice rather than a
+    period detail. What 8 bits actually buys you is 48 dB of range, which is
+    audible as grit on every decaying tone, and there is no reason to pay it.
+    The waveforms are still square, triangle and noise, so nothing about the
+    character changes.
+    """
+    if len(samples) * 2 > MAX_WAV_BYTES:
         die("rendered audio exceeds the size limit")
-    frames = array.array("B", bytes(len(samples)))
+    frames = array.array("h", bytes(2 * len(samples)))
     for i, v in enumerate(samples):
-        n = int(v * 127.0) + 128
-        frames[i] = 0 if n < 0 else (255 if n > 255 else n)
+        n = int(v * 32767.0)
+        frames[i] = -32767 if n < -32767 else (32767 if n > 32767 else n)
     frames = frames.tobytes()
+    if sys.byteorder != "little":
+        frames = array.array("h", frames)
+        frames.byteswap()
+        frames = frames.tobytes()
     header = (
         b"RIFF" + struct.pack("<I", 36 + len(frames)) + b"WAVEfmt "
-        + struct.pack("<IHHIIHH", 16, 1, 1, RATE, RATE, 1, 8)
+        + struct.pack("<IHHIIHH", 16, 1, 1, RATE, RATE * 2, 2, 16)
         + b"data" + struct.pack("<I", len(frames))
     )
     return header + frames
