@@ -1,0 +1,214 @@
+{
+  "$comment": "Every pad is synthesised from these numbers, so editing this file changes what you hear on the next press. Copy a board into ~/.config/omableep/pads.json to override it, or add one with a new id to append it. Fields per note: w = pulse|tri|saw|noise, f = Hz, ms = length, duty = pulse width, pwm = pulse width modulation depth, pwmhz = its rate, a/d/r = attack/decay/release in ms, s = sustain level, slide = semitones per second, vib = vibrato depth, vibhz = its rate, arp = semitone steps cycled at arphz, vol = 0 to 1. A note with vol 0 is a rest.",
+
+  "boards": [
+    {
+      "id": "system",
+      "label": "SYSTEM",
+      "pads": [
+        { "label": "POWER ON", "seq": [
+          { "w": "pulse", "f": 70, "ms": 90, "duty": 0.5, "a": 2, "d": 20, "s": 0.9, "r": 40, "vol": 0.45 },
+          { "w": "pulse", "f": 523, "ms": 70, "duty": 0.25, "a": 2, "d": 10, "s": 0.85, "r": 20, "vol": 0.4 },
+          { "w": "pulse", "f": 1046, "ms": 280, "duty": 0.25, "pwm": 0.15, "a": 2, "d": 40, "s": 0.6, "r": 200, "vol": 0.4 }
+        ] },
+        { "label": "READY.", "seq": [
+          { "w": "pulse", "f": 1200, "ms": 45, "duty": 0.5, "a": 1, "d": 6, "s": 0.9, "r": 22, "vol": 0.35 }
+        ] },
+        { "label": "KEYCLICK", "seq": [
+          { "w": "noise", "ms": 16, "a": 0, "d": 4, "s": 0.3, "r": 8, "vol": 0.32 }
+        ] },
+        { "label": "DISK SEEK", "seq": [
+          { "w": "noise", "ms": 18, "a": 0, "d": 6, "s": 0.4, "r": 6, "vol": 0.42 },
+          { "f": 1, "ms": 30, "vol": 0 },
+          { "w": "noise", "ms": 18, "a": 0, "d": 6, "s": 0.4, "r": 6, "vol": 0.42 },
+          { "f": 1, "ms": 30, "vol": 0 },
+          { "w": "noise", "ms": 18, "a": 0, "d": 6, "s": 0.4, "r": 6, "vol": 0.42 },
+          { "f": 1, "ms": 30, "vol": 0 },
+          { "w": "noise", "ms": 18, "a": 0, "d": 6, "s": 0.4, "r": 6, "vol": 0.42 },
+          { "f": 1, "ms": 30, "vol": 0 },
+          { "w": "noise", "ms": 18, "a": 0, "d": 6, "s": 0.4, "r": 6, "vol": 0.42 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "noise", "ms": 90, "a": 0, "d": 30, "s": 0.25, "r": 50, "vol": 0.34 }
+        ] },
+        { "label": "TAPE LOAD", "seq": [
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 2600, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 },
+          { "w": "pulse", "f": 1900, "ms": 26, "duty": 0.5, "a": 1, "d": 2, "s": 1, "r": 2, "vol": 0.26 }
+        ] },
+        { "label": "ERROR", "seq": [
+          { "w": "pulse", "f": 180, "ms": 95, "duty": 0.5, "a": 1, "d": 8, "s": 1, "r": 12, "vol": 0.4 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "pulse", "f": 140, "ms": 240, "duty": 0.5, "a": 1, "d": 8, "s": 1, "r": 120, "vol": 0.4 }
+        ] },
+        { "label": "SCROLL", "seq": [
+          { "w": "pulse", "f": 1600, "ms": 130, "duty": 0.35, "slide": -40, "a": 1, "d": 20, "s": 0.7, "r": 70, "vol": 0.3 }
+        ] },
+        { "label": "RESET", "seq": [
+          { "w": "saw", "f": 900, "ms": 520, "slide": -30, "a": 2, "d": 60, "s": 0.7, "r": 260, "vol": 0.35 }
+        ] }
+      ]
+    },
+
+    {
+      "id": "arcade",
+      "label": "ARCADE",
+      "pads": [
+        { "label": "COIN", "seq": [
+          { "w": "pulse", "f": 988, "ms": 65, "duty": 0.5, "a": 1, "d": 8, "s": 0.95, "r": 15, "vol": 0.36 },
+          { "w": "pulse", "f": 1319, "ms": 300, "duty": 0.5, "a": 1, "d": 20, "s": 0.8, "r": 230, "vol": 0.36 }
+        ] },
+        { "label": "JUMP", "seq": [
+          { "w": "pulse", "f": 330, "ms": 155, "duty": 0.4, "slide": 22, "a": 1, "d": 20, "s": 0.8, "r": 70, "vol": 0.4 }
+        ] },
+        { "label": "LASER", "seq": [
+          { "w": "saw", "f": 1800, "ms": 230, "slide": -60, "a": 1, "d": 30, "s": 0.7, "r": 160, "vol": 0.38 }
+        ] },
+        { "label": "HIT",
+          "seq": [ { "w": "pulse", "f": 400, "ms": 190, "duty": 0.3, "slide": -40, "a": 1, "d": 30, "s": 0.6, "r": 110, "vol": 0.33 } ],
+          "mix": [ { "w": "noise", "ms": 130, "a": 0, "d": 40, "s": 0.2, "r": 80, "vol": 0.33 } ]
+        },
+        { "label": "EXTRA LIFE", "seq": [
+          { "w": "pulse", "f": 523, "ms": 540, "duty": 0.3, "arp": [0, 4, 7, 12], "arphz": 14, "a": 2, "d": 30, "s": 0.8, "r": 220, "vol": 0.34 }
+        ] },
+        { "label": "GAME OVER", "seq": [
+          { "w": "pulse", "f": 523, "ms": 175, "duty": 0.4, "a": 2, "d": 20, "s": 0.85, "r": 40, "vol": 0.36 },
+          { "w": "pulse", "f": 440, "ms": 175, "duty": 0.4, "a": 2, "d": 20, "s": 0.85, "r": 40, "vol": 0.36 },
+          { "w": "pulse", "f": 349, "ms": 175, "duty": 0.4, "a": 2, "d": 20, "s": 0.85, "r": 40, "vol": 0.36 },
+          { "w": "pulse", "f": 262, "ms": 440, "duty": 0.4, "a": 2, "d": 30, "s": 0.8, "r": 320, "vol": 0.36 }
+        ] },
+        { "label": "POWER UP", "seq": [
+          { "w": "pulse", "f": 262, "ms": 620, "duty": 0.35, "slide": 14, "arp": [0, 7, 12, 16], "arphz": 24, "a": 2, "d": 40, "s": 0.75, "r": 200, "vol": 0.32 }
+        ] },
+        { "label": "EXPLODE",
+          "seq": [ { "w": "pulse", "f": 220, "ms": 720, "duty": 0.35, "slide": -24, "a": 1, "d": 60, "s": 0.6, "r": 420, "vol": 0.34 } ],
+          "mix": [ { "w": "noise", "ms": 620, "a": 0, "d": 200, "s": 0.25, "r": 390, "vol": 0.4 } ]
+        }
+      ]
+    },
+
+    {
+      "id": "modem",
+      "label": "MODEM",
+      "pads": [
+        { "label": "OFF HOOK",
+          "seq": [ { "w": "tri", "f": 350, "ms": 900, "a": 8, "d": 20, "s": 0.95, "r": 60, "vol": 0.3 } ],
+          "mix": [ { "w": "tri", "f": 440, "ms": 900, "a": 8, "d": 20, "s": 0.95, "r": 60, "vol": 0.3 } ]
+        },
+        { "label": "DIAL", "seq": [
+          { "w": "tri", "f": 941, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 1336, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 1209, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 1477, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 941, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 1336, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 },
+          { "f": 1, "ms": 55, "vol": 0 },
+          { "w": "tri", "f": 1209, "ms": 70, "a": 2, "d": 6, "s": 1, "r": 10, "vol": 0.3 }
+        ] },
+        { "label": "HANDSHAKE", "seq": [
+          { "w": "tri", "f": 1270, "ms": 420, "a": 5, "d": 20, "s": 0.95, "r": 30, "vol": 0.28 },
+          { "w": "tri", "f": 2225, "ms": 260, "a": 5, "d": 20, "s": 0.95, "r": 20, "vol": 0.24 },
+          { "w": "saw", "f": 600, "ms": 340, "slide": 26, "vib": 0.12, "vibhz": 22, "a": 5, "d": 40, "s": 0.8, "r": 40, "vol": 0.26 },
+          { "w": "noise", "ms": 420, "a": 10, "d": 60, "s": 0.55, "r": 80, "vol": 0.3 },
+          { "w": "saw", "f": 1800, "ms": 300, "slide": -18, "vib": 0.2, "vibhz": 31, "a": 5, "d": 40, "s": 0.75, "r": 60, "vol": 0.26 },
+          { "w": "noise", "ms": 500, "a": 10, "d": 80, "s": 0.6, "r": 120, "vol": 0.3 },
+          { "w": "tri", "f": 2100, "ms": 380, "a": 5, "d": 30, "s": 0.9, "r": 200, "vol": 0.24 }
+        ] },
+        { "label": "CONNECT", "seq": [
+          { "w": "tri", "f": 1200, "ms": 120, "a": 3, "d": 10, "s": 1, "r": 25, "vol": 0.32 },
+          { "f": 1, "ms": 40, "vol": 0 },
+          { "w": "tri", "f": 1800, "ms": 260, "a": 3, "d": 10, "s": 1, "r": 180, "vol": 0.32 }
+        ] },
+        { "label": "CARRIER", "seq": [
+          { "w": "tri", "f": 1200, "ms": 800, "a": 20, "d": 20, "s": 1, "r": 120, "vol": 0.28 }
+        ] },
+        { "label": "NO CARRIER", "seq": [
+          { "w": "tri", "f": 1200, "ms": 320, "a": 10, "d": 10, "s": 1, "r": 8, "vol": 0.28 },
+          { "f": 1, "ms": 90, "vol": 0 },
+          { "w": "pulse", "f": 150, "ms": 300, "duty": 0.5, "a": 2, "d": 20, "s": 0.8, "r": 200, "vol": 0.36 }
+        ] },
+        { "label": "BUSY", "seq": [
+          { "w": "tri", "f": 480, "ms": 260, "a": 4, "d": 10, "s": 1, "r": 20, "vol": 0.3 },
+          { "f": 1, "ms": 260, "vol": 0 },
+          { "w": "tri", "f": 480, "ms": 260, "a": 4, "d": 10, "s": 1, "r": 20, "vol": 0.3 },
+          { "f": 1, "ms": 260, "vol": 0 },
+          { "w": "tri", "f": 480, "ms": 260, "a": 4, "d": 10, "s": 1, "r": 20, "vol": 0.3 }
+        ] },
+        { "label": "RING",
+          "seq": [
+            { "w": "tri", "f": 440, "ms": 900, "vib": 0.04, "vibhz": 20, "a": 20, "d": 20, "s": 1, "r": 60, "vol": 0.28 },
+            { "f": 1, "ms": 320, "vol": 0 },
+            { "w": "tri", "f": 440, "ms": 900, "vib": 0.04, "vibhz": 20, "a": 20, "d": 20, "s": 1, "r": 60, "vol": 0.28 }
+          ],
+          "mix": [
+            { "w": "tri", "f": 480, "ms": 900, "vib": 0.04, "vibhz": 20, "a": 20, "d": 20, "s": 1, "r": 60, "vol": 0.28 },
+            { "f": 1, "ms": 320, "vol": 0 },
+            { "w": "tri", "f": 480, "ms": 900, "vib": 0.04, "vibhz": 20, "a": 20, "d": 20, "s": 1, "r": 60, "vol": 0.28 }
+          ]
+        }
+      ]
+    },
+
+    {
+      "id": "alert",
+      "label": "ALERT",
+      "pads": [
+        { "label": "KLAXON", "seq": [
+          { "w": "saw", "f": 520, "ms": 300, "slide": -14, "a": 6, "d": 30, "s": 0.85, "r": 60, "vol": 0.34 },
+          { "f": 1, "ms": 90, "vol": 0 },
+          { "w": "saw", "f": 520, "ms": 300, "slide": -14, "a": 6, "d": 30, "s": 0.85, "r": 60, "vol": 0.34 },
+          { "f": 1, "ms": 90, "vol": 0 },
+          { "w": "saw", "f": 520, "ms": 380, "slide": -14, "a": 6, "d": 30, "s": 0.85, "r": 160, "vol": 0.34 }
+        ] },
+        { "label": "SIREN", "seq": [
+          { "w": "saw", "f": 700, "ms": 1600, "vib": 0.26, "vibhz": 0.9, "a": 40, "d": 40, "s": 0.9, "r": 200, "vol": 0.3 }
+        ] },
+        { "label": "WARN", "seq": [
+          { "w": "pulse", "f": 1760, "ms": 70, "duty": 0.5, "a": 1, "d": 8, "s": 1, "r": 15, "vol": 0.3 },
+          { "f": 1, "ms": 70, "vol": 0 },
+          { "w": "pulse", "f": 1760, "ms": 70, "duty": 0.5, "a": 1, "d": 8, "s": 1, "r": 15, "vol": 0.3 },
+          { "f": 1, "ms": 70, "vol": 0 },
+          { "w": "pulse", "f": 1760, "ms": 70, "duty": 0.5, "a": 1, "d": 8, "s": 1, "r": 15, "vol": 0.3 }
+        ] },
+        { "label": "ALARM", "seq": [
+          { "w": "pulse", "f": 880, "ms": 110, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 10, "vol": 0.32 },
+          { "w": "pulse", "f": 660, "ms": 110, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 10, "vol": 0.32 },
+          { "w": "pulse", "f": 880, "ms": 110, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 10, "vol": 0.32 },
+          { "w": "pulse", "f": 660, "ms": 110, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 10, "vol": 0.32 },
+          { "w": "pulse", "f": 880, "ms": 110, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 10, "vol": 0.32 },
+          { "w": "pulse", "f": 660, "ms": 230, "duty": 0.5, "a": 2, "d": 8, "s": 1, "r": 140, "vol": 0.32 }
+        ] },
+        { "label": "BEEP", "seq": [
+          { "w": "pulse", "f": 880, "ms": 90, "duty": 0.5, "a": 1, "d": 8, "s": 0.95, "r": 30, "vol": 0.34 }
+        ] },
+        { "label": "DENY", "seq": [
+          { "w": "saw", "f": 110, "ms": 380, "duty": 0.5, "pwm": 0.2, "pwmhz": 14, "a": 3, "d": 30, "s": 0.85, "r": 140, "vol": 0.4 }
+        ] },
+        { "label": "ALL CLEAR", "seq": [
+          { "w": "tri", "f": 587, "ms": 140, "a": 4, "d": 15, "s": 0.95, "r": 40, "vol": 0.32 },
+          { "w": "tri", "f": 880, "ms": 380, "a": 4, "d": 20, "s": 0.9, "r": 280, "vol": 0.32 }
+        ] },
+        { "label": "RED ALERT", "seq": [
+          { "w": "saw", "f": 660, "ms": 230, "slide": -10, "a": 8, "d": 20, "s": 0.9, "r": 50, "vol": 0.32 },
+          { "w": "saw", "f": 495, "ms": 230, "slide": -10, "a": 8, "d": 20, "s": 0.9, "r": 50, "vol": 0.32 },
+          { "f": 1, "ms": 120, "vol": 0 },
+          { "w": "saw", "f": 660, "ms": 230, "slide": -10, "a": 8, "d": 20, "s": 0.9, "r": 50, "vol": 0.32 },
+          { "w": "saw", "f": 495, "ms": 320, "slide": -10, "a": 8, "d": 20, "s": 0.9, "r": 200, "vol": 0.32 }
+        ] }
+      ]
+    }
+  ]
+}

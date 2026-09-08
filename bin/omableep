@@ -1,0 +1,656 @@
+#!/usr/bin/python3 -IS
+"""Omableep: a soundboard that synthesises every pad instead of shipping audio.
+
+Two commands, both of which write to stdout and neither of which writes a file:
+
+    omableep boards              the board and pad labels, as JSON, for the panel
+    omableep play <board> <pad>  render one pad and pipe it to the system player
+
+Nothing is cached. A pad is a few dozen milliseconds of arithmetic, which is
+less than the time it takes to notice, and a cache would mean a write path:
+symlinks, modes, atomic replacement, repair. The plugin writes nothing at all,
+which is a much easier thing to be sure about.
+
+Pads come from pads.json beside this script, and from ~/.config/omableep/
+pads.json if the user made one. Both are read through a single validated
+descriptor and every value in them is treated as hostile: this file is
+editable by anything running as the same user, and the numbers in it end up
+driving loops.
+"""
+
+import array
+import json
+import math
+import os
+import random
+import re
+import signal
+import stat
+import struct
+import subprocess
+import sys
+
+RATE = 22050            # the rate a cabinet ran at, and a quarter of the samples
+FADE = int(RATE * 0.002)  # 2ms at both ends, so a blip stops without a click
+
+# Every one of these bounds the work a pads.json can ask for. The file is
+# user-editable, so "how long is this list" is an attacker-chosen number.
+MAX_FILE_BYTES = 128 * 1024
+MAX_BOARDS = 12
+MAX_PADS = 16
+MAX_NOTES = 64
+MAX_NOTE_MS = 4000
+MAX_PAD_MS = 8000
+MAX_FREQ = 12000.0
+MAX_ARP = 16
+MAX_LABEL = 20
+MAX_WAV_BYTES = 4 * 1024 * 1024
+
+ID_RE = re.compile(r"\A[a-z0-9][a-z0-9-]{0,23}\Z")
+WAVES = ("pulse", "tri", "saw", "noise")
+
+# Absolute paths only. A bare name resolves through a PATH that another process
+# can prepend to, and this one receives bytes on its stdin. The third element
+# turns a 0-to-1 level into that player's own volume option, which is only
+# needed for a file we did not render and therefore cannot scale ourselves;
+# aplay has no such option, so there the level is simply not applied.
+PLAYERS = (
+    ("/usr/bin/pw-play", ("-",), lambda g: ("--volume=%.2f" % g,)),
+    ("/usr/bin/paplay", (), lambda g: ("--volume=%d" % round(g * 65536),)),
+    ("/usr/bin/aplay", ("-q", "-"), lambda g: ()),
+)
+
+# The user's own recordings, which this plugin reads and never ships.
+SOUNDS_BOARD = "yours"
+MAX_SOUND_FILES = 16
+MAX_SOUND_BYTES = 2 * 1024 * 1024
+SOUND_RE = re.compile(r"\A[A-Za-z0-9][A-Za-z0-9 ._-]{0,62}\.wav\Z")
+
+
+def die(message):
+    sys.stderr.write("omableep: %s\n" % message[:200])
+    raise SystemExit(1)
+
+
+# ---------------------------------------------------------------- reading pads
+
+def read_bounded(path):
+    """Read a file through one descriptor that is never re-resolved by name.
+
+    O_NOFOLLOW refuses a symlink planted on the final component, O_NONBLOCK
+    keeps a planted FIFO from hanging the open before the type check runs, and
+    the size test happens on the descriptor we go on to read from rather than
+    on the name we opened.
+    """
+    try:
+        fd = os.open(path, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC)
+    except (FileNotFoundError, NotADirectoryError):
+        return None
+    except OSError as exc:
+        die("cannot read %s: %s" % (os.path.basename(path), exc.strerror))
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode):
+            die("%s is not a regular file" % os.path.basename(path))
+        if st.st_uid != os.geteuid():
+            die("%s is owned by another user" % os.path.basename(path))
+        if st.st_size > MAX_FILE_BYTES:
+            die("%s is larger than %d bytes" % (os.path.basename(path), MAX_FILE_BYTES))
+        os.set_blocking(fd, True)
+        chunks = []
+        total = 0
+        while total <= MAX_FILE_BYTES:
+            chunk = os.read(fd, min(65536, MAX_FILE_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        if total > MAX_FILE_BYTES:
+            die("%s grew past the limit while being read" % os.path.basename(path))
+        return b"".join(chunks)
+    finally:
+        os.close(fd)
+
+
+def num(value, low, high, default):
+    """Coerce one JSON value to a finite number inside a range, or give up on it."""
+    if isinstance(value, bool) or not isinstance(value, (int, float)):
+        return default
+    value = float(value)
+    if not math.isfinite(value):
+        return default
+    return max(low, min(high, value))
+
+
+def label(value, fallback):
+    """A label ends up in a Text and in the bar tooltip, so it loses its markup here.
+
+    The QML pins every Text to PlainText, but the bar tooltip is drawn by the
+    shell with AutoText and a plugin cannot set the format there. Stripping at
+    the producer is the only place that covers both.
+    """
+    if not isinstance(value, str):
+        return fallback
+    clean = "".join(c for c in value if c.isprintable() and c not in "<>&")
+    clean = clean.strip()[:MAX_LABEL]
+    return clean or fallback
+
+
+def parse_note(raw):
+    if not isinstance(raw, dict):
+        return None
+    wave = raw.get("w")
+    return {
+        "w": wave if wave in WAVES else "pulse",
+        "f": num(raw.get("f"), 0.0, MAX_FREQ, 440.0),
+        "ms": num(raw.get("ms"), 1.0, MAX_NOTE_MS, 100.0),
+        "duty": num(raw.get("duty"), 0.02, 0.98, 0.5),
+        "pwm": num(raw.get("pwm"), 0.0, 0.45, 0.0),
+        "pwmhz": num(raw.get("pwmhz"), 0.1, 30.0, 2.0),
+        "a": num(raw.get("a"), 0.0, MAX_NOTE_MS, 4.0),
+        "d": num(raw.get("d"), 0.0, MAX_NOTE_MS, 30.0),
+        "s": num(raw.get("s"), 0.0, 1.0, 0.7),
+        "r": num(raw.get("r"), 0.0, MAX_NOTE_MS, 40.0),
+        "slide": num(raw.get("slide"), -120.0, 120.0, 0.0),
+        "vib": num(raw.get("vib"), 0.0, 0.5, 0.0),
+        "vibhz": num(raw.get("vibhz"), 0.1, 40.0, 7.0),
+        "arp": parse_arp(raw.get("arp")),
+        "arphz": num(raw.get("arphz"), 1.0, 100.0, 50.0),
+        "vol": num(raw.get("vol"), 0.0, 1.0, 0.5),
+    }
+
+
+def parse_arp(raw):
+    if not isinstance(raw, list) or not raw:
+        return None
+    steps = [num(v, -48.0, 48.0, 0.0) for v in raw[:MAX_ARP]]
+    return steps or None
+
+
+def parse_layer(raw):
+    if not isinstance(raw, list):
+        return []
+    notes = []
+    budget = MAX_PAD_MS
+    for entry in raw[:MAX_NOTES]:
+        note = parse_note(entry)
+        if note is None:
+            continue
+        if note["ms"] > budget:
+            note["ms"] = budget
+        budget -= note["ms"]
+        if note["ms"] >= 1.0:
+            notes.append(note)
+        if budget <= 0:
+            break
+    return notes
+
+
+def parse_pad(raw, index):
+    if not isinstance(raw, dict):
+        return None
+    seq = parse_layer(raw.get("seq"))
+    mix = parse_layer(raw.get("mix"))
+    if not seq and not mix:
+        return None
+    return {
+        "label": label(raw.get("label"), "PAD %d" % (index + 1)),
+        "seq": seq,
+        "mix": mix,
+    }
+
+
+def parse_board(raw, index):
+    if not isinstance(raw, dict):
+        return None
+    board_id = raw.get("id")
+    if not isinstance(board_id, str) or not ID_RE.match(board_id):
+        return None
+    pads = []
+    for i, entry in enumerate(raw.get("pads") or []):
+        if len(pads) >= MAX_PADS:
+            break
+        pad = parse_pad(entry, i)
+        if pad is not None:
+            pads.append(pad)
+    if not pads:
+        return None
+    return {
+        "id": board_id,
+        "label": label(raw.get("label"), board_id.upper()),
+        "pads": pads,
+    }
+
+
+def load_boards():
+    """The shipped boards, then the user's own appended after them.
+
+    A user board with an id that already exists replaces the shipped one, so a
+    pad can be re-voiced without forking the file. Returns the boards and the
+    starting volume, which the panel does not persist between sessions: this
+    file is the only place settings live, so there is nothing to write.
+    """
+    boards = []
+    seen = {}
+    gain = 0.7
+
+    for path in pads_files():
+        raw = read_bounded(path)
+        if raw is None:
+            continue
+        try:
+            doc = json.loads(raw.decode("utf-8", "strict"))
+        except (ValueError, UnicodeDecodeError):
+            die("%s is not valid JSON" % os.path.basename(path))
+        if not isinstance(doc, dict):
+            die("%s is not a JSON object" % os.path.basename(path))
+        if "gain" in doc:
+            gain = num(doc.get("gain"), 0.0, 1.0, gain)
+        entries = doc.get("boards")
+        if not isinstance(entries, list):
+            die("%s has no boards array" % os.path.basename(path))
+        for i, entry in enumerate(entries[:MAX_BOARDS]):
+            board = parse_board(entry, i)
+            if board is None:
+                continue
+            if board["id"] in seen:
+                boards[seen[board["id"]]] = board
+            elif len(boards) < MAX_BOARDS:
+                seen[board["id"]] = len(boards)
+                boards.append(board)
+
+    own = sounds_board()
+    if own is not None and SOUNDS_BOARD not in seen and len(boards) < MAX_BOARDS:
+        boards.append(own)
+
+    if not boards:
+        die("no usable boards found")
+    return boards, gain
+
+
+def config_dir():
+    base = os.environ.get("XDG_CONFIG_HOME") or os.path.join(os.path.expanduser("~"), ".config")
+    return os.path.join(base, "omableep")
+
+
+def pads_files():
+    here = os.path.dirname(os.path.abspath(__file__))
+    yield os.path.join(os.path.dirname(here), "pads.json")
+    yield os.path.join(config_dir(), "pads.json")
+
+
+def sounds_board():
+    """A board made of whatever .wav files are in ~/.config/omableep/sounds/.
+
+    This is the escape hatch for audio this plugin will not carry: a real tape
+    loader, a recording of your own doorbell, anything with a rights holder.
+    The files stay on the machine they were put on. Nothing here creates the
+    directory, because loading a plugin should not write to the disk.
+    """
+    path = os.path.join(config_dir(), "sounds")
+    try:
+        dirfd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    except OSError:
+        return None
+    try:
+        st = os.fstat(dirfd)
+        if not stat.S_ISDIR(st.st_mode) or st.st_uid != os.geteuid():
+            return None
+        # Bounded before sorting: a directory with a hundred thousand entries in
+        # it should cost this process a bounded amount of memory, not all of it.
+        names = []
+        for name in os.listdir(dirfd):
+            if len(names) >= MAX_SOUND_FILES * 4:
+                break
+            if SOUND_RE.match(name) and playable(dirfd, name):
+                names.append(name)
+        names.sort()
+    finally:
+        os.close(dirfd)
+
+    if not names:
+        return None
+    return {
+        "id": SOUNDS_BOARD,
+        "label": "YOURS",
+        "pads": [{"label": label(n[:-4].upper(), "SOUND"), "file": n}
+                 for n in names[:MAX_SOUND_FILES]],
+    }
+
+
+def playable(dirfd, name):
+    """Would this file survive read_sound? Cheap enough to ask about all sixteen.
+
+    A pad that is guaranteed to fail should not be on the board at all. This is
+    a filter for the listing and not a security check: the file can change
+    between here and the press, which is why read_sound repeats every one of
+    these tests on the descriptor it actually reads from.
+    """
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+                     dir_fd=dirfd)
+    except OSError:
+        return False
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid():
+            return False
+        if st.st_size > MAX_SOUND_BYTES or st.st_size < 12:
+            return False
+        os.set_blocking(fd, True)
+        head = os.read(fd, 12)
+        return len(head) == 12 and head[:4] == b"RIFF" and head[8:12] == b"WAVE"
+    except OSError:
+        return False
+    finally:
+        os.close(fd)
+
+
+def read_sound(name):
+    """Read one user file through a descriptor opened relative to the directory.
+
+    The name never gets joined onto a string and reopened: the directory is
+    opened once, checked, and every file comes out of that same descriptor, so
+    there is no window between deciding a path is fine and reading it.
+    """
+    if not SOUND_RE.match(name):
+        die("bad sound name")
+    path = os.path.join(config_dir(), "sounds")
+    dirfd = os.open(path, os.O_RDONLY | os.O_DIRECTORY | os.O_NOFOLLOW | os.O_CLOEXEC)
+    try:
+        fd = os.open(name, os.O_RDONLY | os.O_NOFOLLOW | os.O_NONBLOCK | os.O_CLOEXEC,
+                     dir_fd=dirfd)
+    except OSError:
+        os.close(dirfd)
+        die("cannot read that sound")
+    try:
+        st = os.fstat(fd)
+        if not stat.S_ISREG(st.st_mode) or st.st_uid != os.geteuid():
+            die("that sound is not an ordinary file of yours")
+        if st.st_size > MAX_SOUND_BYTES:
+            die("that sound is larger than %d bytes" % MAX_SOUND_BYTES)
+        os.set_blocking(fd, True)
+        chunks = []
+        total = 0
+        while total <= MAX_SOUND_BYTES:
+            chunk = os.read(fd, min(65536, MAX_SOUND_BYTES + 1 - total))
+            if not chunk:
+                break
+            chunks.append(chunk)
+            total += len(chunk)
+        if total > MAX_SOUND_BYTES:
+            die("that sound grew past the limit while being read")
+        data = b"".join(chunks)
+    finally:
+        os.close(fd)
+        os.close(dirfd)
+
+    # The extension is a claim by whoever named the file. The header is the
+    # thing the player will actually try to decode, so that is what gets checked.
+    if len(data) < 12 or data[:4] != b"RIFF" or data[8:12] != b"WAVE":
+        die("that file is not a WAV")
+    return data
+
+
+# ------------------------------------------------------------------- the synth
+
+def render_layer(notes, gain):
+    """One voice, note after note. Everything here is already range-checked.
+
+    The locals below are hoisted out of the sample loop on purpose. At 22 kHz a
+    two second pad is forty thousand turns, and an attribute lookup per turn is
+    the difference between a pad you hear immediately and one you wait for.
+    """
+    sin = math.sin
+    rnd = random.Random(1982).random    # fixed seed, so a pad sounds the same twice
+    two_pi = 2.0 * math.pi
+    out = []
+
+    for note in notes:
+        frames = int(RATE * note["ms"] / 1000.0)
+        if frames <= 0:
+            continue
+        wave = note["w"]
+        f0 = note["f"]
+        duty, pwm, pwmhz = note["duty"], note["pwm"], note["pwmhz"]
+        atk = note["a"] / 1000.0
+        dec = note["d"] / 1000.0
+        sus = note["s"]
+        rel = note["r"] / 1000.0
+        dur = note["ms"] / 1000.0
+        slide = note["slide"] / 12.0        # semitones per second, as octaves
+        vib, vibhz = note["vib"], note["vibhz"]
+        arp, arphz = note["arp"], note["arphz"]
+        arp_len = len(arp) if arp else 0
+        vol = note["vol"] * gain
+        step = f0 / RATE                    # the constant case, when nothing bends
+        bends = bool(slide or vib or arp)
+        phase = 0.0
+        sustain_from = atk + dec
+        release_at = dur - rel
+
+        for i in range(frames):
+            t = i / RATE
+            if bends:
+                freq = f0
+                if slide:
+                    freq *= 2.0 ** (slide * t)
+                if vib:
+                    freq *= 1.0 + vib * sin(two_pi * vibhz * t)
+                if arp:
+                    freq *= 2.0 ** (arp[int(t * arphz) % arp_len] / 12.0)
+                phase += (freq if freq < MAX_FREQ else MAX_FREQ) / RATE
+            else:
+                phase += step
+
+            if t < atk:
+                env = t / atk if atk else 1.0
+            elif t < sustain_from:
+                env = 1.0 - (1.0 - sus) * ((t - atk) / dec) if dec else sus
+            elif t > release_at:
+                env = sus * (dur - t) / rel if rel else 0.0
+                if env < 0.0:
+                    env = 0.0
+            else:
+                env = sus
+
+            if wave == "pulse":
+                width = duty + pwm * sin(two_pi * pwmhz * t) if pwm else duty
+                sample = 1.0 if (phase % 1.0) < width else -1.0
+            elif wave == "tri":
+                p = phase % 1.0
+                sample = 4.0 * p - 1.0 if p < 0.5 else 3.0 - 4.0 * p
+            elif wave == "saw":
+                sample = 2.0 * (phase % 1.0) - 1.0
+            else:
+                sample = rnd() * 2.0 - 1.0
+
+            out.append(sample * env * vol)
+    return out
+
+
+def render_pad(pad, gain):
+    mixed = render_layer(pad["seq"], gain)
+    if pad["mix"]:
+        second = render_layer(pad["mix"], gain)
+        if len(second) > len(mixed):
+            mixed, second = second, mixed
+        for i, value in enumerate(second):
+            mixed[i] += value
+
+    length = len(mixed)
+    if not length:
+        die("pad rendered to nothing")
+
+    for i in range(min(FADE, length)):
+        ramp = i / FADE
+        mixed[i] *= ramp
+        mixed[length - 1 - i] *= ramp
+    return mixed
+
+
+def wav_bytes(samples):
+    """8-bit unsigned mono, the format the era actually used."""
+    if len(samples) > MAX_WAV_BYTES:
+        die("rendered audio exceeds the size limit")
+    frames = array.array("B", bytes(len(samples)))
+    for i, v in enumerate(samples):
+        n = int(v * 127.0) + 128
+        frames[i] = 0 if n < 0 else (255 if n > 255 else n)
+    frames = frames.tobytes()
+    header = (
+        b"RIFF" + struct.pack("<I", 36 + len(frames)) + b"WAVEfmt "
+        + struct.pack("<IHHIIHH", 16, 1, 1, RATE, RATE, 1, 8)
+        + b"data" + struct.pack("<I", len(frames))
+    )
+    return header + frames
+
+
+# ---------------------------------------------------------------- playing them
+
+def play(payload, level=None):
+    """Hand the bytes to whatever this machine has, on stdin rather than as a path.
+
+    `level` is set only for a file we did not render, where the volume has to be
+    asked of the player because we cannot scale bytes we have not decoded.
+
+    Passing a filename would mean the player re-resolves a name we validated
+    a moment ago, which is the race this avoids entirely. The player is chosen
+    here rather than at install time, so moving between PipeWire and PulseAudio
+    needs no reinstall, and a machine with neither stays silent instead of
+    erroring on every click.
+    """
+    # A deliberately small environment, but not an empty one: every player here
+    # reaches its server through a socket under XDG_RUNTIME_DIR, so dropping
+    # that variable means the player exits at once and the pad is silent with
+    # nothing said about it anywhere.
+    env = {"PATH": "/usr/bin:/bin", "HOME": os.path.expanduser("~")}
+    runtime = os.environ.get("XDG_RUNTIME_DIR")
+    if runtime:
+        env["XDG_RUNTIME_DIR"] = runtime
+
+    for binary, args, volume in PLAYERS:
+        if not os.path.isfile(binary):
+            continue
+        try:
+            proc = subprocess.Popen(
+                [binary, *(volume(level) if level is not None else ()), *args],
+                stdin=subprocess.PIPE,
+                stdout=subprocess.DEVNULL,
+                # Not discarded. A player that refuses the stream is the single
+                # most likely way this plugin goes quietly wrong, and the panel
+                # has no other way to find out.
+                stderr=subprocess.PIPE,
+                env=env,
+            )
+        except OSError:
+            continue
+
+        # A stop from the panel signals this process; pass that on to the player
+        # rather than orphaning it, and give the whole thing a hard deadline so
+        # a wedged sink cannot leave a process behind for the rest of the session.
+        def stop(_signum, _frame, proc=proc):
+            proc.terminate()
+            try:
+                proc.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                proc.kill()
+            raise SystemExit(0)
+
+        signal.signal(signal.SIGTERM, stop)
+        signal.signal(signal.SIGINT, stop)
+        signal.signal(signal.SIGALRM, stop)
+        signal.alarm(30)
+
+        noise = b""
+        try:
+            _, noise = proc.communicate(payload, timeout=30)
+        except subprocess.TimeoutExpired:
+            proc.kill()
+            proc.wait()
+        except BrokenPipeError:
+            proc.kill()
+            proc.wait()
+        signal.alarm(0)
+
+        # Say so rather than shrug. The panel cannot tell a pad that played from
+        # a pad that was refused, and a soundboard that has gone silent for a
+        # reason nobody logged is the worst version of this program.
+        if proc.returncode not in (0, None, -signal.SIGTERM, -signal.SIGKILL):
+            detail = noise[:200].decode("utf-8", "replace").strip().replace("\n", " ")
+            die("%s exited %d%s" % (os.path.basename(binary), proc.returncode,
+                                    ": " + detail if detail else ""))
+        return
+    die("no audio player found (pw-play, paplay or aplay)")
+
+
+# ------------------------------------------------------------------------ main
+
+def cmd_boards(boards, gain):
+    payload = {
+        "ok": True,
+        "gain": gain,
+        "boards": [
+            {
+                "id": b["id"],
+                "label": b["label"],
+                "pads": [{"label": p["label"]} for p in b["pads"]],
+            }
+            for b in boards
+        ],
+    }
+    json.dump(payload, sys.stdout, separators=(",", ":"))
+    sys.stdout.write("\n")
+
+
+def cmd_play(boards, default_gain, argv):
+    if len(argv) < 2:
+        die("play needs a board id and a pad number")
+    board_id = argv[0]
+    if not ID_RE.match(board_id):
+        die("bad board id")
+    if not re.fullmatch(r"[0-9]{1,2}", argv[1]):
+        die("bad pad number")
+    index = int(argv[1])
+
+    gain = default_gain
+    if len(argv) >= 3:
+        if not re.fullmatch(r"(0|1)(\.[0-9]{1,3})?", argv[2]):
+            die("bad gain")
+        gain = min(1.0, float(argv[2]))
+    if gain <= 0.0:
+        return
+
+    for board in boards:
+        if board["id"] == board_id:
+            if not 0 <= index < len(board["pads"]):
+                die("no such pad")
+            pad = board["pads"][index]
+            if "file" in pad:
+                play(read_sound(pad["file"]), level=gain)
+            else:
+                play(wav_bytes(render_pad(pad, gain)))
+            return
+    die("no such board")
+
+
+def main(argv):
+    if not argv:
+        die("usage: omableep boards | omableep play <board> <pad> [gain]")
+    command = argv[0]
+    if command not in ("boards", "play"):
+        die("unknown command")
+    boards, gain = load_boards()
+    if command == "boards":
+        cmd_boards(boards, gain)
+    else:
+        cmd_play(boards, gain, argv[1:])
+
+
+if __name__ == "__main__":
+    try:
+        main(sys.argv[1:])
+    except BrokenPipeError:
+        os._exit(0)
+    except KeyboardInterrupt:
+        os._exit(0)

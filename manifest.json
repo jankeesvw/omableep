@@ -1,0 +1,21 @@
+{
+  "schemaVersion": 1,
+  "id": "jankeesvw.omableep",
+  "name": "Omableep",
+  "version": "1.0.0",
+  "author": "Jankees van Woezik",
+  "description": "A soundboard that synthesises every pad instead of shipping audio files.",
+  "kinds": [
+    "bar-widget"
+  ],
+  "entryPoints": {
+    "barWidget": "Panel.qml"
+  },
+  "barWidget": {
+    "displayName": "Omableep",
+    "description": "A soundboard that synthesises every pad instead of shipping audio files.",
+    "category": "Widgets",
+    "allowMultiple": false,
+    "defaultSection": "right"
+  }
+}
