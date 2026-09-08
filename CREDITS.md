@@ -1,8 +1,19 @@
 # Where the recordings came from
 
-Most of this plugin is synthesised and has no source to credit. The `DRIVE` board is the exception: those eight pads are cut from real recordings of a real 5.25 inch floppy drive, because a stepper motor and a head dragging across oxide are physical events and a square wave does not imitate them convincingly.
+Two of the six boards are recordings and the rest is synthesised. The rule is that anything which was once a chip gets synthesised, because a coin sound on a home computer really was a square wave and generating one is the same act rather than an imitation of it. Anything which was once a physical object, or a signal carried down a phone line, is a recording, because no envelope on a noise generator convincingly imitates a stepper motor or a modem negotiating a rate.
 
-Both source files are Creative Commons Zero, which is a dedication to the public domain and carries no attribution requirement. They are credited here anyway, so that anyone reviewing this repository can check the provenance rather than take it on faith.
+Everything here is Creative Commons Zero or Creative Commons Attribution. CC0 carries no attribution requirement and is credited anyway, so that anyone reviewing this repository can check the provenance rather than take it on faith.
+
+## MODEM
+
+| pads | source | author | licence |
+|---|---|---|---|
+| `DIAL TONE`, `DIALING`, `HANDSHAKE`, `NEGOTIATE`, `CONNECT` | [56kmodem take04 edit clean m44.wav](https://freesound.org/people/theTone/sounds/209687/) on Freesound | theTone | [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/) |
+| `1200 BAUD` | [modem1200.wav](https://freesound.org/people/guitarguy1985/sounds/78657/) on Freesound | guitarguy1985 | [CC0 1.0](https://creativecommons.org/publicdomain/zero/1.0/) |
+
+`RING` and `BUSY` are synthesised, and that is not a shortcut. A ringing tone is 440 and 480 Hz together, and a busy signal is 480 and 620 Hz at half a second on and half a second off. Those are specifications, so generating them produces the signal itself rather than a likeness of it.
+
+## DRIVE
 
 | pads | source | licence |
 |---|---|---|
@@ -12,10 +23,12 @@ Both source files are Creative Commons Zero, which is a dedication to the public
 
 ## What was done to them
 
-Each source runs for half a minute or more. A segment of one to two and a half seconds was cut out, converted to the same 22 kHz 8 bit mono the synthesiser produces, levelled with `loudnorm`, and given a short fade at each end so a pad stops without a click of its own. Nothing else was added or removed. The result is 324 KB for the whole board.
+Every source runs for half a minute or more. A segment of one and a half to three seconds was cut out of each, converted to the same 22 kHz 8 bit mono the synthesiser produces, levelled with `loudnorm`, and given a short fade at each end so a pad stops without a click of its own. The Freesound material was taken from the site's own preview encodes. Nothing was added, and no part of any recording appears here other than the segment named above.
 
-## What is not in here
+The whole set is 696 KB.
 
-There is no recording of a dial-up modem handshake, and the `MODEM` board is synthesised in full. Real recordings of one are easy to find and hard to license: the copies in circulation are re-uploads whose provenance nobody can establish, and the only Creative Commons Zero result on Freesound turned out to be a generated sound rather than a recording. A plugin cannot ship audio on the strength of a hopeful guess about who owns it.
+## Why these and not others
 
-If you have a recording you are entitled to use, put it in `~/.config/omableep/sounds/` and it appears on its own board. That directory is yours and this repository never touches it.
+Recordings of dial-up modems are everywhere and most of them cannot be shipped. The copies in general circulation are re-uploads whose provenance nobody can establish, and a plugin cannot carry audio on the strength of a hopeful guess about who owns it. The two used here are by people who appear to have recorded their own hardware, under licences that permit redistribution, and the licence was confirmed on each sound's own page rather than taken from a search filter.
+
+If you have recordings you are entitled to use, put them in `~/.config/omableep/sounds/` and they appear on a board of their own. That directory is yours and this repository never touches it.

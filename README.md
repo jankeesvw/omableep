@@ -2,7 +2,7 @@
 
 A soundboard for the Omarchy bar. The chip sounds are synthesised on the spot, the machine sounds are real recordings.
 
-Five boards of eight: `MODEM` (dial tone, handshake, CONNECT, NO CARRIER), `DRIVE` (a real 5.25 inch floppy spinning up, seeking, grinding), `SYSTEM` (power-on, keyclick, tape load, error), `ARCADE` (coin, laser, extra life, game over) and `ALERT` (klaxon, siren, red alert). Press a letter for a board, a number for a pad.
+Five boards of eight: `MODEM` (a real 56k session: dial tone, dialing, handshake, connect), `DRIVE` (a real 5.25 inch floppy spinning up, seeking, grinding), `SYSTEM` (power-on, keyclick, tape load, error), `ARCADE` (coin, laser, extra life, game over) and `ALERT` (klaxon, siren, red alert). Press a letter for a board, a number for a pad.
 
 ## Where the sounds come from
 
@@ -10,7 +10,9 @@ Anything that was once a chip is synthesised, and anything that was once a physi
 
 So four boards are numbers. A waveform, a pulse width, an envelope, a pitch slide, turned into 8-bit 22 kHz audio at the moment you press the pad and piped straight into the system player. The longest takes 69 milliseconds to make and most take three or four, which is why there is no cache, no first-run generation step, and no state directory to clean up.
 
-The `DRIVE` board is 324 KB of real floppy drive, cut from two CC0 recordings on Wikimedia Commons. `CREDITS.md` names them, says what was done to them, and explains why there is no recording of a modem in here.
+The `MODEM` and `DRIVE` boards are 696 KB of real hardware: a 56k modem dialling out and connecting, and a 5.25 inch floppy drive spinning up and grinding. `CREDITS.md` names every source, its author and its licence, and says what was cut out of it.
+
+Two pads on the `MODEM` board stay synthesised, and that is not a shortcut either. A ringing tone is 440 and 480 Hz together and a busy signal is 480 and 620 Hz at half a second on and off. Those are specifications, so generating them produces the signal rather than a likeness of it.
 
 Sampled game audio is a different matter and is not in this plugin at any point. It is still under copyright everywhere and will be for another fifty years, so a board built from it could not be published. If you have recordings you are entitled to use, the `YOURS` board below is for exactly that.
 
